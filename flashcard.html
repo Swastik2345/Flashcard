@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Neon Glass Flashcards — Frontend Only</title>
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root{
+      --bg1: #070617;
+      --glass-1: rgba(255,255,255,0.06);
+      --glass-2: rgba(255,255,255,0.03);
+      --neon1: #7c3aed; /* violet */
+      --neon2: #06b6d4; /* cyan */
+      --accent: #00ffa3;
+      --text: #e6f0ff;
+    }
+
+    *{box-sizing:border-box}
+    html,body{
+      height:100%;
+      margin:0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: radial-gradient(1200px 600px at 10% 10%, rgba(124,58,237,0.12), transparent 10%),
+                  radial-gradient(1000px 500px at 90% 90%, rgba(6,182,212,0.08), transparent 12%),
+                  var(--bg1);
+      color:var(--text);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:28px;
+    }
+
+    .app {
+      width: 960px;
+      max-width: 96vw;
+      display: grid;
+      gap:20px;
+      grid-template-columns: 380px 1fr;
+      grid-auto-rows: min-content;
+    }
+
+    header{
+      grid-column: 1 / -1;
+      padding:18px 22px;
+      border-radius:14px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      backdrop-filter: blur(8px);
+      box-shadow:
+        0 8px 40px rgba(2,6,23,0.6),
+        0 0 30px rgba(124,58,237,0.08) inset;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      border: 1px solid rgba(255,255,255,0.04);
+    }
+
+    .brand {
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+
+    .logo {
+      width:44px;
+      height:44px;
+      border-radius:10px;
+      background: linear-gradient(135deg, rgba(124,58,237,0.18), rgba(6,182,212,0.12));
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-weight:700;
+      color: white;
+      text-shadow: 0 2px 14px rgba(124,58,237,0.45);
+      box-shadow: 0 8px 30px rgba(124,58,237,0.08);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+
+    h1{ margin:0; font-size:18px; letter-spacing:0.2px; color:var(--text) }
+    .subtitle { font-size:13px; color:rgba(230,240,255,0.7) }
+
+    .controls {
+      display:flex;
+      gap:10px;
+      align-items:center;
+    }
+
+    .btn {
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      border:1px solid rgba(255,255,255,0.06);
+      padding:10px 14px;
+      border-radius:10px;
+      color:var(--text);
+      cursor:pointer;
+      font-weight:600;
+      box-shadow: 0 6px 20px rgba(2,6,23,0.6);
+      transition: transform .12s ease, box-shadow .12s ease;
+    }
+    .btn:hover{ transform: translateY(-3px) }
+    .primary {
+      background: linear-gradient(90deg, rgba(124,58,237,0.16), rgba(6,182,212,0.12));
+      border: 1px solid rgba(124,58,237,0.35);
+      box-shadow: 0 8px 40px rgba(124,58,237,0.08), 0 0 18px rgba(6,182,212,0.04);
+    }
+
+    /* Left column: controls / form / stats */
+    .panel {
+      padding:16px;
+      border-radius:14px;
+      background: linear-gradient(180deg, var(--glass-1), var(--glass-2));
+      border:1px solid rgba(255,255,255,0.04);
+      backdrop-filter: blur(6px) saturate(120%);
+      box-shadow: 0 10px 30px rgba(2,6,23,0.55);
+    }
+
+    .panel h3 { margin:0 0 10px 0; font-size:14px }
+    .stack { display:flex; flex-direction:column; gap:10px; }
+
+    label{ font-size:13px; color:rgba(230,240,255,0.9) }
+    input[type="text"], textarea {
+      background: rgba(0,0,0,0.25);
+      border: 1px solid rgba(255,255,255,0.04);
+      padding:10px;
+      border-radius:10px;
+      color:var(--text);
+      outline:none;
+      resize:vertical;
+      min-height:40px;
+    }
+    textarea { min-height:90px }
+
+    .small {
+      font-size:13px;
+      color:rgba(230,240,255,0.75);
+    }
+
+    /* Flashcard big area */
+    .stage {
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:14px;
+      border-radius:14px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border: 1px solid rgba(255,255,255,0.03);
+      min-height:520px;
+      box-shadow: 0 18px 60px rgba(2,6,23,0.6);
+    }
+
+    .flashcard-wrapper {
+      perspective:1200px;
+    }
+
+    .flashcard {
+      width:480px;
+      max-width:90vw;
+      height:260px;
+      border-radius:16px;
+      position:relative;
+      transform-style:preserve-3d;
+      transition: transform 0.8s cubic-bezier(.2,.9,.3,1);
+      cursor:pointer;
+      box-shadow:
+        0 12px 40px rgba(2,6,23,0.6),
+        0 0 40px rgba(124,58,237,0.08) inset;
+      border:1px solid rgba(255,255,255,0.03);
+      background: linear-gradient(135deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    }
+
+    .flashcard.flipped { transform: rotateY(180deg) }
+
+    .face {
+      position:absolute;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:28px;
+      backface-visibility:hidden;
+      border-radius:16px;
+      text-align:center;
+      font-size:20px;
+      line-height:1.3;
+      color:var(--text);
+    }
+
+    .front {
+      background: linear-gradient(180deg, rgba(124,58,237,0.08), rgba(6,182,212,0.04));
+      box-shadow: 0 0 24px rgba(124,58,237,0.06);
+      border: 1px solid rgba(124,58,237,0.14);
+    }
+
+    .back {
+      transform: rotateY(180deg);
+      background: linear-gradient(180deg, rgba(6,182,212,0.06), rgba(124,58,237,0.02));
+      box-shadow: 0 0 18px rgba(6,182,212,0.04);
+      border: 1px solid rgba(6,182,212,0.12);
+    }
+
+    .muted { color: rgba(230,240,255,0.7); font-size:13px }
+
+    .controls-row { display:flex; gap:10px; align-items:center; justify-content:center; margin-top:12px }
+
+    .small-btn {
+      padding:8px 10px;
+      border-radius:8px;
+      font-size:13px;
+    }
+
+    .hidden{ display:none !important }
+
+    /* neon border glow for active elements */
+    .neon-outline {
+      box-shadow: 0 0 12px rgba(124,58,237,0.22), 0 0 30px rgba(6,182,212,0.06);
+      border: 1px solid rgba(124,58,237,0.35);
+    }
+
+    /* charts area */
+    .charts {
+      display:flex;
+      gap:12px;
+      flex-direction:column;
+    }
+
+    canvas { background: transparent; max-width:100% }
+
+    footer.note {
+      grid-column:1 / -1;
+      text-align:center;
+      color: rgba(230,240,255,0.65);
+      font-size:13px;
+      margin-top:6px;
+    }
+
+    /* responsive */
+    @media (max-width:920px){
+      .app{ grid-template-columns: 1fr; }
+      .stage { min-height:420px }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="brand">
+        <div class="logo">FG</div>
+        <div>
+          <h1>Neon Glass Flashcards</h1>
+          <div class="subtitle">Study faster — all in your browser (offline)</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="btn primary" id="addBtn">➕ Add Card</button>
+        <button class="btn" id="nextBtn">➡️ Next</button>
+        <button class="btn" id="quizBtn">❓ Quiz</button>
+        <button class="btn" id="statsBtn">📊 Stats</button>
+        <button class="btn" id="exportBtn">⬇️ Export</button>
+        <button class="btn" id="importBtn">⬆️ Import</button>
+        <input id="fileInput" type="file" accept=".json" class="hidden">
+      </div>
+    </header>
+
+    <!-- left column -->
+    <div class="panel">
+      <h3>Card Editor</h3>
+      <div class="stack">
+        <label>Question</label>
+        <input id="qInput" type="text" placeholder="Type the question or term">
+        <label>Answer</label>
+        <textarea id="aInput" placeholder="Type the answer or explanation"></textarea>
+        <div style="display:flex; gap:8px;">
+          <button class="btn primary" id="saveBtn">Save Card</button>
+          <button class="btn" id="clearFormBtn">Clear</button>
+        </div>
+
+        <div style="border-top:1px solid rgba(255,255,255,0.03); padding-top:10px;">
+          <div class="small">Quick actions</div>
+          <div style="display:flex; gap:8px; margin-top:8px;">
+            <button class="btn small-btn" id="shuffleBtn">Shuffle Deck</button>
+            <button class="btn small-btn" id="resetStatsBtn">Reset Stats</button>
+            <button class="btn small-btn" id="deleteAllBtn">Delete All</button>
+          </div>
+          <div style="margin-top:8px;" class="muted">Cards stored locally in your browser.</div>
+        </div>
+      </div>
+
+      <div style="margin-top:16px;">
+        <h3>Deck</h3>
+        <div id="deckList" class="small muted">No cards yet</div>
+      </div>
+    </div>
+
+    <!-- right column: stage -->
+    <div class="stage panel">
+      <div style="width:100%; display:flex; flex-direction:column; align-items:center; gap:12px;">
+        <div class="flashcard-wrapper">
+          <div class="flashcard" id="card" title="Click to flip">
+            <div class="face front" id="cardFront">No cards yet. Add one!</div>
+            <div class="face back" id="cardBack"></div>
+          </div>
+        </div>
+
+        <div class="controls-row">
+          <button class="btn small-btn" id="prevBtn">◀ Prev</button>
+          <div id="indexLabel" class="muted">0 / 0</div>
+          <button class="btn small-btn" id="nextCardBtn">Next ▶</button>
+          <button class="btn small-btn" id="speakBtn">🔊 Read</button>
+        </div>
+
+        <div id="quizArea" class="hidden" style="width:100%; margin-top:10px;">
+          <div style="width:100%; display:flex; flex-direction:column; gap:8px; align-items:center;">
+            <div id="quizQuestion" style="font-size:18px; text-align:center;"></div>
+            <input id="quizAnswer" type="text" placeholder="Type your answer" style="width:70%; padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.04); background:rgba(0,0,0,0.25); color:var(--text)">
+            <div style="display:flex; gap:8px;">
+              <button class="btn primary" id="checkBtn">Check</button>
+              <button class="btn" id="endQuizBtn">End Quiz</button>
+            </div>
+            <div id="quizFeedback" class="muted"></div>
+          </div>
+        </div>
+
+        <div id="chartsPanel" class="hidden" style="width:100%; margin-top:12px;">
+          <h3 style="margin:0 0 8px 0">Progress</h3>
+          <div class="charts">
+            <canvas id="overallChart" height="150"></canvas>
+            <canvas id="perCardChart" height="200"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <footer class="note">Built with ❤️ — works entirely on your device. Export/Import JSON to share decks.</footer>
+  </div>
+
+  <script>
+    // ---------- Data model ----------
+    // card = { question: string, answer: string, attempts: number, correct: number }
+    const STORAGE_KEY = "neon_flashcards_v1";
+
+    let cards = loadCards();
+    let idx = 0;
+
+    // Chart instances
+    let overallChart = null;
+    let perCardChart = null;
+
+    // ---------- DOM ----------
+    const cardEl = document.getElementById('card');
+    const cardFront = document.getElementById('cardFront');
+    const cardBack = document.getElementById('cardBack');
+    const indexLabel = document.getElementById('indexLabel');
+    const deckList = document.getElementById('deckList');
+
+    const qInput = document.getElementById('qInput');
+    const aInput = document.getElementById('aInput');
+
+    const addBtn = document.getElementById('addBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const clearFormBtn = document.getElementById('clearFormBtn');
+    const nextBtn = document.getElementById('nextBtn');
+    const prevBtn = document.getElementById('prevBtn');
+    const nextCardBtn = document.getElementById('nextCardBtn');
+    const shuffleBtn = document.getElementById('shuffleBtn');
+    const deleteAllBtn = document.getElementById('deleteAllBtn');
+    const exportBtn = document.getElementById('exportBtn');
+    const importBtn = document.getElementById('importBtn');
+    const fileInput = document.getElementById('fileInput');
+    const quizBtn = document.getElementById('quizBtn');
+    const quizArea = document.getElementById('quizArea');
+    const quizQuestion = document.getElementById('quizQuestion');
+    const quizAnswer = document.getElementById('quizAnswer');
+    const checkBtn = document.getElementById('checkBtn');
+    const endQuizBtn = document.getElementById('endQuizBtn');
+    const quizFeedback = document.getElementById('quizFeedback');
+    const statsBtn = document.getElementById('statsBtn');
+    const chartsPanel = document.getElementById('chartsPanel');
+    const overallCanvas = document.getElementById('overallChart');
+    const perCardCanvas = document.getElementById('perCardChart');
+    const resetStatsBtn = document.getElementById('resetStatsBtn');
+    const speakBtn = document.getElementById('speakBtn');
+
+    // ---------- Init ----------
+    renderDeckList();
+    showCard(0);
+
+    // ---------- Event listeners ----------
+    addBtn.addEventListener('click', () => {
+      // focus the editor
+      qInput.focus();
+    });
+
+    saveBtn.addEventListener('click', () => {
+      const q = qInput.value.trim();
+      const a = aInput.value.trim();
+      if (!q || !a) { alert("Enter both question and answer"); return; }
+      const newCard = { question: q, answer: a, attempts: 0, correct: 0 };
+      cards.push(newCard);
+      saveCards();
+      qInput.value = ""; aInput.value = "";
+      renderDeckList();
+      showCard(cards.length - 1);
+      flashHighlight(cardEl);
+    });
+
+    clearFormBtn.addEventListener('click', () => { qInput.value=''; aInput.value=''; });
+
+    nextBtn.addEventListener('click', () => nextCard());
+    nextCardBtn.addEventListener('click', () => nextCard());
+    prevBtn.addEventListener('click', () => {
+      if (cards.length === 0) return;
+      idx = (idx - 1 + cards.length) % cards.length;
+      showCard(idx);
+    });
+
+    shuffleBtn.addEventListener('click', () => {
+      shuffle(cards);
+      saveCards();
+      idx = 0;
+      renderDeckList();
+      showCard(0);
+    });
+
+    deleteAllBtn.addEventListener('click', () => {
+      if (!confirm("Delete all cards? This cannot be undone.")) return;
+      cards = [];
+      saveCards();
+      idx = 0;
+      renderDeckList();
+      showCard(0);
+    });
+
+    exportBtn.addEventListener('click', exportDeck);
+    importBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', importDeckFromFile);
+
+    cardEl.addEventListener('click', () => cardEl.classList.toggle('flipped'));
+
+    quizBtn.addEventListener('click', startQuiz);
+    checkBtn.addEventListener('click', checkQuizAnswer);
+    endQuizBtn.addEventListener('click', endQuiz);
+
+    statsBtn.addEventListener('click', () => {
+      chartsPanel.classList.toggle('hidden');
+      if (!chartsPanel.classList.contains('hidden')) updateCharts();
+    });
+
+    resetStatsBtn.addEventListener('click', () => {
+      if (!confirm("Reset all stats?")) return;
+      for (let c of cards) { c.attempts = 0; c.correct = 0; }
+      saveCards();
+      updateCharts();
+      renderDeckList();
+    });
+
+    speakBtn.addEventListener('click', () => {
+      const text = cardFront.textContent + ". " + cardBack.textContent;
+      speakText(text);
+    });
+
+    // ---------- Functions ----------
+    function loadCards(){
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        // ensure objects have stats
+        for (let c of parsed) {
+          if (typeof c.attempts !== 'number') c.attempts = 0;
+          if (typeof c.correct !== 'number') c.correct = 0;
+        }
+        return parsed;
+      } catch(e){ return []; }
+    }
+
+    function saveCards(){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(cards));
+    }
+
+    function renderDeckList(){
+      if (cards.length === 0) {
+        deckList.innerHTML = "No cards yet";
+        return;
+      }
+      deckList.innerHTML = "";
+      const wrap = document.createElement('div');
+      wrap.style.display = 'flex';
+      wrap.style.flexDirection = 'column';
+      wrap.style.gap = '6px';
+
+      cards.forEach((c, i) => {
+        const row = document.createElement('div');
+        row.style.display='flex';
+        row.style.alignItems='center';
+        row.style.justifyContent='space-between';
+        row.style.gap='8px';
+        row.style.padding='6px';
+        row.style.borderRadius='8px';
+        row.style.cursor='pointer';
+        row.style.background = i === idx ? "linear-gradient(90deg, rgba(124,58,237,0.06), rgba(6,182,212,0.03))" : "transparent";
+        row.innerHTML = `<div style="min-width:0"><strong style="display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px">${escapeHtml(c.question)}</strong><div class="small-muted" style="font-size:12px;color:rgba(230,240,255,0.6)">Attempts: ${c.attempts} • Correct: ${c.correct}</div></div>
+                         <div style="display:flex; gap:6px;"><button data-i="${i}" class="btn small-btn" title="Edit">Edit</button><button data-del="${i}" class="btn small-btn" title="Delete">Del</button></div>`;
+        // click to show
+        row.addEventListener('click', (e) => {
+          if (e.target && e.target.getAttribute && (e.target.getAttribute('data-i') !== null || e.target.getAttribute('data-del') !== null)) {
+            // handled below
+            return;
+          }
+          idx = i;
+          showCard(i);
+        });
+        wrap.appendChild(row);
+      });
+
+      deckList.appendChild(wrap);
+
+      // bind edit/delete
+      document.querySelectorAll('[data-i]').forEach(el => {
+        el.addEventListener('click', (e) => {
+          const i = parseInt(e.currentTarget.getAttribute('data-i'));
+          const c = cards[i];
+          const newQ = prompt("Edit question:", c.question);
+          if (newQ === null) return;
+          const newA = prompt("Edit answer:", c.answer);
+          if (newA === null) return;
+          c.question = newQ.trim() || c.question;
+          c.answer = newA.trim() || c.answer;
+          saveCards();
+          renderDeckList();
+          showCard(i);
+        });
+      });
+
+      document.querySelectorAll('[data-del]').forEach(el => {
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const i = parseInt(e.currentTarget.getAttribute('data-del'));
+          if (!confirm("Delete this card?")) return;
+          cards.splice(i,1);
+          if (idx >= cards.length) idx = Math.max(0, cards.length - 1);
+          saveCards();
+          renderDeckList();
+          showCard(idx);
+        });
+      });
+    }
+
+    function showCard(i){
+      if (cards.length === 0){
+        cardFront.textContent = "No cards yet. Add one!";
+        cardBack.textContent = "";
+        indexLabel.textContent = "0 / 0";
+        cardEl.classList.remove('flipped');
+        return;
+      }
+      idx = ((i % cards.length) + cards.length) % cards.length;
+      const c = cards[idx];
+      cardFront.textContent = c.question;
+      cardBack.textContent = c.answer;
+      indexLabel.textContent = `${idx+1} / ${cards.length}`;
+      cardEl.classList.remove('flipped');
+      renderDeckList();
+    }
+
+    function nextCard(){
+      if (cards.length === 0) return;
+      idx = (idx + 1) % cards.length;
+      showCard(idx);
+    }
+
+    function shuffle(array){
+      for (let i = array.length -1; i>0;i--){
+        const j = Math.floor(Math.random() * (i+1));
+        [array[i], array[j]] = [array[j], array[i]];
+      }
+    }
+
+    function exportDeck(){
+      const blob = new Blob([JSON.stringify(cards, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'neon_flashcards.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importDeckFromFile(e){
+      const f = e.target.files[0];
+      if (!f) return;
+      const r = new FileReader();
+      r.onload = (ev) => {
+        try {
+          const parsed = JSON.parse(ev.target.result);
+          if (!Array.isArray(parsed)) throw new Error("Invalid format");
+          // ensure stats exist
+          for (let c of parsed) {
+            if (typeof c.attempts !== 'number') c.attempts = 0;
+            if (typeof c.correct !== 'number') c.correct = 0;
+            if (typeof c.question !== 'string') c.question = '';
+            if (typeof c.answer !== 'string') c.answer = '';
+          }
+          cards = parsed;
+          saveCards();
+          idx = 0;
+          renderDeckList();
+          showCard(0);
+          alert("Imported deck successfully.");
+        } catch(err){
+          alert("Import failed: invalid JSON.");
+        }
+      };
+      r.readAsText(f);
+      // reset input so same file can be reselected next time
+      e.target.value = "";
+    }
+
+    // --------- Quiz mode ----------
+    let inQuiz = false;
+    let quizOrder = [];
+    let quizPointer = 0;
+
+    function startQuiz(){
+      if (cards.length === 0) { alert("No cards to quiz."); return; }
+      inQuiz = true;
+      quizOrder = cards.map((_,i) => i);
+      shuffle(quizOrder);
+      quizPointer = 0;
+      quizArea.classList.remove('hidden');
+      chartsPanel.classList.add('hidden');
+      showQuizCard();
+    }
+
+    function showQuizCard(){
+      if (!inQuiz) return;
+      if (quizOrder.length === 0){ endQuiz(); return; }
+      const i = quizOrder[quizPointer % quizOrder.length];
+      quizQuestion.textContent = cards[i].question;
+      quizAnswer.value = "";
+      quizFeedback.textContent = `Card ${quizPointer+1} / ${quizOrder.length}`;
+      quizAnswer.focus();
+    }
+
+    function checkQuizAnswer(){
+      if (!inQuiz) return;
+      const user = quizAnswer.value.trim().toLowerCase();
+      const i = quizOrder[quizPointer % quizOrder.length];
+      const correct = cards[i].answer.trim().toLowerCase();
+      // update attempts
+      cards[i].attempts = (cards[i].attempts || 0) + 1;
+      if (user === correct){
+        cards[i].correct = (cards[i].correct || 0) + 1;
+        quizFeedback.textContent = "✅ Correct!";
+      } else {
+        quizFeedback.textContent = `❌ Wrong — Answer: ${cards[i].answer}`;
+      }
+      saveCards();
+      updateCharts(); renderDeckList();
+      quizPointer++;
+      if (quizPointer >= quizOrder.length) {
+        // end quiz after full pass
+        setTimeout(() => { endQuiz(true); }, 900);
+      } else {
+        setTimeout(showQuizCard, 900);
+      }
+    }
+
+    function endQuiz(showSummary){
+      inQuiz = false;
+      quizArea.classList.add('hidden');
+      quizFeedback.textContent = "";
+      quizQuestion.textContent = "";
+      quizAnswer.value = "";
+      showCard(idx);
+      if (showSummary) {
+        chartsPanel.classList.remove('hidden');
+        updateCharts();
+        alert("Quiz finished — check your progress in the charts.");
+      }
+    }
+
+    // ---------- Charts ----------
+    function updateCharts(){
+      const totalAttempts = cards.reduce((s,c) => s + (c.attempts||0), 0);
+      const totalCorrect = cards.reduce((s,c) => s + (c.correct||0), 0);
+      const totalIncorrect = totalAttempts - totalCorrect;
+
+      // Overall donut
+      const overallData = {
+        labels: ['Correct','Incorrect'],
+        datasets: [{
+          data: totalAttempts === 0 ? [1,0] : [totalCorrect, Math.max(0,totalIncorrect)],
+          backgroundColor: [getComputedStyle(document.documentElement).getPropertyValue('--neon1').trim() || '#7c3aed', getComputedStyle(document.documentElement).getPropertyValue('--neon2').trim() || '#06b6d4']
+        }]
+      };
+
+      if (overallChart) overallChart.destroy();
+      overallChart = new Chart(overallCanvas, {
+        type: 'doughnut',
+        data: overallData,
+        options: {
+          responsive:true,
+          maintainAspectRatio:false,
+          plugins: {
+            legend: { position: 'bottom', labels: { color: '#dfefff' } },
+            tooltip: {enabled:true}
+          }
+        }
+      });
+
+      // Per-card accuracy bar
+      const labels = cards.map((c,i) => (c.question.length>18 ? c.question.slice(0,16)+'…' : c.question) || `Card ${i+1}`);
+      const accuracies = cards.map(c => {
+        return c.attempts ? Math.round((c.correct||0) / c.attempts * 100) : 0;
+      });
+
+      if (perCardChart) perCardChart.destroy();
+      perCardChart = new Chart(perCardCanvas, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Accuracy (%)',
+            data: accuracies,
+            borderRadius: 6,
+            barPercentage: 0.7,
+            backgroundColor: labels.map((_,i) => i%2? 'rgba(124,58,237,0.7)':'rgba(6,182,212,0.7)')
+          }]
+        },
+        options: {
+          responsive:true,
+          maintainAspectRatio:false,
+          scales: {
+            y: { suggestedMax:100, ticks: { color:'#dfefff' } },
+            x: { ticks: { color:'#dfefff' } }
+          },
+          plugins: {
+            legend: { display:false },
+            tooltip: { enabled:true }
+          }
+        }
+      });
+    }
+
+    // ---------- Helpers ----------
+    function escapeHtml(s){ return String(s).replace(/[&<>"']/g, (m)=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+    function flashHighlight(el){
+      el.classList.add('neon-outline');
+      setTimeout(()=>el.classList.remove('neon-outline'), 900);
+    }
+
+    function speakText(text){
+      if (!('speechSynthesis' in window)) { alert("Speech synthesis not supported."); return; }
+      const ut = new SpeechSynthesisUtterance(text);
+      ut.lang = 'en-US';
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(ut);
+    }
+
+    // small util: show card by index (already present)
+    // and keep charts updated occasionally
+    setInterval(() => {
+      // sync in case other tab changed storage
+      const remote = loadCards();
+      if (JSON.stringify(remote) !== JSON.stringify(cards)) {
+        cards = remote;
+        renderDeckList();
+        showCard(idx);
+      }
+    }, 3000);
+
+    // optional: update charts on load if panel visible
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) updateCharts(); });
+
+    // initial charts render if desired
+    // (charts panel is hidden by default; will render when opened)
+  </script>
+</body>
+</html>

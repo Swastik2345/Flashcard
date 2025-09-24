@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flashcards App</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+
+  <style>
+    /* Global Styles */
+    body {
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #e0f7ff, #f9ffff);
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      background-attachment: fixed;
+    }
+
+    header {
+      background: linear-gradient(135deg, #00f0ff, #0077ff);
+      color: white;
+      text-align: center;
+      padding: 20px;
+      font-size: 1.5rem;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(0, 119, 255, 0.3);
+    }
+
+    /* Flashcard Container */
+    .flashcard-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-grow: 1;
+      margin-top: 40px;
+    }
+
+    .flashcard {
+      width: 320px;
+      height: 220px;
+      perspective: 1000px;
+      cursor: pointer;
+    }
+
+    .flashcard-inner {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transition: transform 0.7s ease-in-out;
+      transform-style: preserve-3d;
+    }
+
+    .flashcard.flipped .flashcard-inner {
+      transform: rotateY(180deg) scale(1.05);
+    }
+
+    .flashcard .front,
+    .flashcard .back {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 1.2rem;
+      font-weight: 500;
+      background: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(12px);
+      border-radius: 20px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2),
+                  0 0 12px rgba(0, 200, 255, 0.4);
+      color: #004466;
+      padding: 20px;
+      text-align: center;
+      transition: box-shadow 0.3s;
+    }
+
+    .flashcard:hover .front,
+    .flashcard:hover .back {
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2),
+                  0 0 20px rgba(0, 200, 255, 0.6);
+    }
+
+    .flashcard .back {
+      transform: rotateY(180deg);
+    }
+
+    /* Controls */
+    .controls {
+      text-align: center;
+      margin: 10px 0 50px;
+    }
+
+    .controls button {
+      background: linear-gradient(135deg, #00f0ff, #0077ff);
+      border: none;
+      padding: 10px 18px;
+      margin: 6px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: white;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .controls button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0, 119, 255, 0.4);
+    }
+
+    /* Progress bar */
+    .progress-container {
+      width: 100%;
+      max-width: 350px;
+      height: 6px;
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 3px;
+      margin: 15px auto;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(to right, #00f0ff, #0077ff);
+      width: 0%;
+      transition: width 0.4s ease;
+    }
+
+    /* Footer */
+    footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100vw;
+      background: linear-gradient(to right, #00f0ff, #0077ff);
+      color: white;
+      text-align: center;
+      padding: 12px;
+      font-weight: 600;
+      box-shadow: 0 -4px 12px rgba(0, 119, 255, 0.3);
+    }
+
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(6px);
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content {
+      background: rgba(255, 255, 255, 0.9);
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+      width: 300px;
+      text-align: center;
+    }
+
+    .modal-content input {
+      width: 90%;
+      padding: 8px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      outline: none;
+      background: rgba(240, 240, 240, 0.9);
+    }
+
+    .modal-content button {
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <h1>Flashcards</h1>
+  </header>
+
+  <!-- Main -->
+  <main>
+    <div class="flashcard-container">
+      <div class="flashcard" id="flashcard">
+        <div class="flashcard-inner">
+          <div class="front">Question will appear here</div>
+          <div class="back">Answer will appear here</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Progress Bar -->
+    <div class="progress-container">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+      <button id="prevBtn">⟨ Prev</button>
+      <button id="flipBtn">Flip</button>
+      <button id="nextBtn">Next ⟩</button>
+      <button id="shuffleBtn">🔀 Shuffle</button>
+      <button id="addBtn">➕ Add Card</button>
+      <button id="editBtn">✎ Edit Card</button>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <p>Flashcards App · Minimal Neon Blue Theme</p>
+  </footer>
+
+  <!-- Modal -->
+  <div class="modal" id="modal">
+    <div class="modal-content">
+      <h3 id="modalTitle">Add Card</h3>
+      <input type="text" id="qInput" placeholder="Enter Question">
+      <input type="text" id="aInput" placeholder="Enter Answer">
+      <button id="saveBtn">Save</button>
+      <button id="closeBtn">Cancel</button>
+    </div>
+  </div>
+
+  <script>
+    // Flashcards Data
+    let flashcards = [
+      { question: "What is 2 + 2?", answer: "4" },
+      { question: "Square root of 81?", answer: "9" },
+      { question: "Formula for area of a circle?", answer: "πr²" },
+      { question: "Probability of getting head on a coin?", answer: "1/2" },
+      { question: "What is the Pythagoras theorem?", answer: "a² + b² = c²" }
+    ];
+
+    let currentIndex = 0;
+    let editing = false;
+
+    const flashcard = document.getElementById("flashcard");
+    const front = flashcard.querySelector(".front");
+    const back = flashcard.querySelector(".back");
+    const prevBtn = document.getElementById("prevBtn");
+    const nextBtn = document.getElementById("nextBtn");
+    const flipBtn = document.getElementById("flipBtn");
+    const shuffleBtn = document.getElementById("shuffleBtn");
+    const progressBar = document.getElementById("progressBar");
+    const addBtn = document.getElementById("addBtn");
+    const editBtn = document.getElementById("editBtn");
+
+    // Modal
+    const modal = document.getElementById("modal");
+    const modalTitle = document.getElementById("modalTitle");
+    const qInput = document.getElementById("qInput");
+    const aInput = document.getElementById("aInput");
+    const saveBtn = document.getElementById("saveBtn");
+    const closeBtn = document.getElementById("closeBtn");
+
+    function loadFlashcard(index) {
+      front.textContent = flashcards[index].question;
+      back.textContent = flashcards[index].answer;
+      flashcard.classList.remove("flipped");
+      updateProgress();
+    }
+
+    function updateProgress() {
+      const percent = ((currentIndex + 1) / flashcards.length) * 100;
+      progressBar.style.width = percent + "%";
+    }
+
+    // Navigation
+    prevBtn.addEventListener("click", () => {
+      currentIndex = (currentIndex - 1 + flashcards.length) % flashcards.length;
+      loadFlashcard(currentIndex);
+    });
+
+    nextBtn.addEventListener("click", () => {
+      currentIndex = (currentIndex + 1) % flashcards.length;
+      loadFlashcard(currentIndex);
+    });
+
+    flipBtn.addEventListener("click", () => {
+      flashcard.classList.toggle("flipped");
+    });
+
+    shuffleBtn.addEventListener("click", () => {
+      let newIndex;
+      do {
+        newIndex = Math.floor(Math.random() * flashcards.length);
+      } while (newIndex === currentIndex);
+      currentIndex = newIndex;
+      loadFlashcard(currentIndex);
+    });
+
+    // Modal Logic
+    addBtn.addEventListener("click", () => {
+      editing = false;
+      modalTitle.textContent = "Add Card";
+      qInput.value = "";
+      aInput.value = "";
+      modal.style.display = "flex";
+    });
+
+    editBtn.addEventListener("click", () => {
+      editing = true;
+      modalTitle.textContent = "Edit Card";
+      qInput.value = flashcards[currentIndex].question;
+      aInput.value = flashcards[currentIndex].answer;
+      modal.style.display = "flex";
+    });
+
+    saveBtn.addEventListener("click", () => {
+      if (qInput.value.trim() && aInput.value.trim()) {
+        if (editing) {
+          flashcards[currentIndex] = { question: qInput.value, answer: aInput.value };
+        } else {
+          flashcards.push({ question: qInput.value, answer: aInput.value });
+          currentIndex = flashcards.length - 1;
+        }
+        loadFlashcard(currentIndex);
+        modal.style.display = "none";
+      }
+    });
+
+    closeBtn.addEventListener("click", () => {
+      modal.style.display = "none";
+    });
+
+    // Keyboard Controls
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowLeft") prevBtn.click();
+      if (e.key === "ArrowRight") nextBtn.click();
+      if (e.key === " " || e.key === "Enter") flipBtn.click();
+      if (e.key.toLowerCase() === "s") shuffleBtn.click();
+    });
+
+    // Swipe Controls
+    let startX = 0;
+    flashcard.addEventListener("touchstart", (e) => {
+      startX = e.touches[0].clientX;
+    });
+    flashcard.addEventListener("touchend", (e) => {
+      let endX = e.changedTouches[0].clientX;
+      if (endX - startX > 50) prevBtn.click();
+      else if (startX - endX > 50) nextBtn.click();
+      else flipBtn.click();
+    });
+
+    // Init
+    loadFlashcard(currentIndex);
+  </script>
+</body>
+  </html>
